@@ -11,6 +11,8 @@ contract Staker {
 
   uint256 public constant threshold = 1 ether;
 
+  uint256 private _stakeEndTime;
+
   ExampleExternalContract public exampleExternalContract;
 
   constructor(address exampleExternalContractAddress) {
@@ -21,6 +23,7 @@ contract Staker {
   //  ( make sure to add a `Stake(address,uint256)` event and emit it for the frontend <List/> display )
   function stake() external payable {
     balances[msg.sender] += msg.value;
+    _stakeEndTime = block.timestamp + 30 seconds;
     emit Stake(msg.sender, msg.value);
   }
 
@@ -30,6 +33,13 @@ contract Staker {
   // if the `threshold` was not met, allow everyone to call a `withdraw()` function
 
   // Add a `timeLeft()` view function that returns the time left before the deadline for the frontend
+  function timeLeft() external view returns (uint256) {
+    if (block.timestamp >= _stakeEndTime) {
+      return 0;
+    } else {
+      return _stakeEndTime - block.timestamp;
+    }
+  }
 
   // Add the `receive()` special function that receives eth and calls stake()
 }
