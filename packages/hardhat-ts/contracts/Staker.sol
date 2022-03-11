@@ -5,11 +5,11 @@ import 'hardhat/console.sol';
 import './ExampleExternalContract.sol';
 
 contract Staker {
-  mapping(address => uint256) private balances;
+  mapping(address => uint256) private _balances;
 
   event Stake(address from, uint256 amount);
 
-  uint256 public constant threshold = 0.01 ether;
+  uint256 public constant threshold = 1 ether;
 
   uint256 private _stakeDeadline;
   bool private _openForWithdraw = false;
@@ -29,10 +29,14 @@ contract Staker {
     exampleExternalContract = ExampleExternalContract(exampleExternalContractAddress);
   }
 
-  // Collect funds in a payable `stake()` function and track individual `balances` with a mapping:
+  function balances(address staker) external view returns (uint256) {
+    return _balances[staker];
+  }
+
+  // Collect funds in a payable `stake()` function and track individual `_balances` with a mapping:
   //  ( make sure to add a `Stake(address,uint256)` event and emit it for the frontend <List/> display )
   function stake() external payable notCompleted {
-    balances[msg.sender] += msg.value;
+    _balances[msg.sender] += msg.value;
     _stakeDeadline = block.timestamp + 30 seconds;
     _openForWithdraw = false;
     emit Stake(msg.sender, msg.value);
@@ -44,22 +48,22 @@ contract Staker {
     uint256 time = this.timeLeft();
 
     if (time == 0 && address(this).balance >= threshold) {
-      exampleExternalContract.complete{value: address(this).balance};
+      exampleExternalContract.complete();
     } else {
       _openForWithdraw = time == 0;
     }
   }
 
   // if the `threshold` was not met, allow everyone to call a `withdraw()` function
-  function withdraw() external returns (bool) {
+  function withdraw(address payable destination) external returns (bool) {
     if (_openForWithdraw == false) revert WithdrawalNotOpenedYet();
 
-    uint256 amount = balances[msg.sender];
+    uint256 amount = _balances[msg.sender];
     if (amount > 0) {
-      balances[msg.sender] = 0;
+      _balances[msg.sender] = 0;
 
-      if (!payable(msg.sender).send(amount)) {
-        balances[msg.sender] = amount;
+      if (!destination.send(amount)) {
+        _balances[msg.sender] = amount;
         return false;
       }
     }
@@ -76,4 +80,7 @@ contract Staker {
   }
 
   // Add the `receive()` special function that receives eth and calls stake()
+  receive() external payable {
+    this.stake();
+  }
 }
