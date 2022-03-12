@@ -62,7 +62,9 @@ contract Staker {
     if (amount > 0) {
       _balances[msg.sender] = 0;
 
-      if (!destination.send(amount)) {
+      (bool success, ) = destination.call{value: amount}('');
+
+      if (!success) {
         _balances[msg.sender] = amount;
         return false;
       }
